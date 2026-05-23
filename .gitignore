@@ -1,2 +1,3 @@
 /rawdata
 /scripts/*.json
+/node_modules
