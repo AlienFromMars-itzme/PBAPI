@@ -1,54 +1,88 @@
-# Pokemon.json
+# Pokemon REST API
 
-### The data can be queried using [pokemon-api](https://github.com/Purukitto/pokemon-api)
+REST API for Pokemon data, designed for Discord bot commands. Data is loaded from the JSON files in this repository and served directly from memory.
 
-[![API](https://img.shields.io/badge/API-Active-green)](https://github.com/Purukitto/pokemon-api)
-![Current Generation](https://img.shields.io/badge/Generation-Updating_to_VIII-red)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/12aa5fbacc55418a9f5fc783a3c20469)](https://app.codacy.com/manual/purukitto/pokemon-data.json?utm_source=github.com&utm_medium=referral&utm_content=Purukitto/pokemon-data.json&utm_campaign=Badge_Grade_Dashboard)
+## Setup
 
-#### Generation VIII update will be resumed once the current issues are solved
+```bash
+npm install
+npm start
+```
 
+Default port is `3000` (override with `PORT` env var).
 
-### Suggested sources for scraping data for contributions are [https://pokemondb.net](https://pokemondb.net) and [Bulbapedia](https://bulbapedia.bulbagarden.net/wiki/Main_Page)
+## Response Format
 
-## File description
+All JSON responses follow:
 
-- ### images
-  - #### pokedex ![Current Generation](https://img.shields.io/badge/Generation-VIII-green)
-    - ##### Hires
-    Contains hires images for all Pokemons upto Gen7
+```json
+{ "success": true, "data": { } }
+```
 
-    - ##### Sprites
-    Contains sprites for all Pokemons upto Gen7
- 
-    - ##### Thumbnails
-    Contains lowres images for all Pokemons upto Gen7
-  
-  - #### items ![Current Generation](https://img.shields.io/badge/Generation-VIII-green)
-    - ##### sprites
-    Contains sprites for all Pokemons upto Gen8
+Errors use:
 
-- ### `items.json` ![Current Generation](https://img.shields.io/badge/Generation-VIII-green)
-JSON file with item details
+```json
+{ "success": false, "error": "Message" }
+```
 
-- ### `moves.json` ![Current Generation](https://img.shields.io/badge/Generation-VII-blue)
-JSON file with all Pokemon attacks updated upto Gen7
+## Endpoints
 
-- ### `pokedex.json` ![Current Generation](https://img.shields.io/badge/Generation-VIII-green)
-JSON file with non-derviable data about all Pokemon upto Gen7
+### Pokedex
 
-- ### `types.json` ![Current Generation](https://img.shields.io/badge/Generation-VII-blue)
-All Pokemon types with effectiveness data
+| Method | Endpoint | Description | Query Params |
+| --- | --- | --- | --- |
+| GET | `/api/pokemon` | Paginated list of Pokemon | `page`, `limit`, `type`, `search` |
+| GET | `/api/pokemon/:id` | Pokemon by national Pokedex number | - |
+| GET | `/api/pokemon/name/:name` | Pokemon by English name (case-insensitive) | - |
+| GET | `/api/pokemon/random` | Random Pokemon | `type` |
+| GET | `/api/pokemon/:id/evolution` | Evolution chain | - |
+| GET | `/api/pokemon/type/:type` | All Pokemon of a type | `type2` |
+| GET | `/api/pokemon/:id/weaknesses` | Weaknesses/resistances/immunities | - |
+| GET | `/api/pokemon/:id/stats` | Base stats + BST | - |
+| GET | `/api/pokemon/search` | Fuzzy search across names | `q` |
 
-<hr>
+### Moves
 
-## Contributors
-<a href="https://github.com/Purukitto/pokemon-data.json/graphs/contributors">
-  <img src="https://contributors-img.web.app/image?repo=Purukitto/pokemon-data.json" />
-</a>
+| Method | Endpoint | Description | Query Params |
+| --- | --- | --- | --- |
+| GET | `/api/moves` | Paginated list of moves | `page`, `limit`, `type`, `category` |
+| GET | `/api/moves/:id` | Move by ID | - |
+| GET | `/api/moves/name/:name` | Move by English name | - |
+| GET | `/api/moves/type/:type` | Moves by type | - |
 
-## Copyright Notice
-**Please note everything in repository are copyrighted by the Pokémon Company and its affiliates.**
+### Items
 
-This repository is merely a compilation of data collected from sources like [Bulbapedia](https://bulbapedia.bulbagarden.net/wiki/Main_Page) and [pokemondb.net](https://pokemondb.net)
+| Method | Endpoint | Description | Query Params |
+| --- | --- | --- | --- |
+| GET | `/api/items` | Paginated list of items | `page`, `limit`, `search` |
+| GET | `/api/items/:id` | Item by ID | - |
+| GET | `/api/items/name/:name` | Item by English name | - |
 
+### Types
+
+| Method | Endpoint | Description | Query Params |
+| --- | --- | --- | --- |
+| GET | `/api/types` | List all types | - |
+| GET | `/api/types/:name` | Type chart by type | - |
+| GET | `/api/types/matchup` | Damage multiplier | `atk`, `def`, `def2` |
+
+### Images
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| GET | `/api/pokemon/:id/image` | Redirect to hires image |
+| GET | `/api/pokemon/:id/sprite` | Redirect to sprite image |
+| GET | `/api/pokemon/:id/thumbnail` | Redirect to thumbnail image |
+| GET | `/api/items/:id/sprite` | Redirect to item sprite |
+
+### Utilities
+
+| Method | Endpoint | Description | Query Params |
+| --- | --- | --- | --- |
+| GET | `/api/quiz/random` | Random Pokemon for quiz | `hint` |
+| GET | `/api/compare` | Side-by-side stat comparison | `id1`, `id2` |
+| GET | `/api/stats/leaderboard` | Top Pokemon by stat | `stat`, `limit` |
+
+## Static Images
+
+Images are served from `/images`. The API image endpoints redirect to these static assets.
