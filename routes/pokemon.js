@@ -15,13 +15,25 @@ const includesType = (pokemon, typeName) => pokemon.type
   .map((type) => normalize(type))
   .includes(typeName);
 
-module.exports = ({ pokedex, types }) => {
+module.exports = ({ pokedex, types, moves }) => {
   const router = express.Router();
   const typeMap = buildTypeMap(types);
   const pokemonById = new Map(pokedex.map((pokemon) => [String(pokemon.id), pokemon]));
   const pokemonByEnglishName = new Map(
     pokedex.map((pokemon) => [normalize(pokemon.name?.english), pokemon]),
   );
+  const movesByType = new Map();
+
+  moves.forEach((move) => {
+    const typeKey = normalize(move.type);
+    if (!typeKey) return;
+    const existing = movesByType.get(typeKey);
+    if (existing) {
+      existing.push(move);
+      return;
+    }
+    movesByType.set(typeKey, [move]);
+  });
 
   const buildEvolutionNode = (pokemon, trigger = null) => {
     const nextStages = pokemon.evolution?.next || [];
@@ -140,6 +152,39 @@ module.exports = ({ pokedex, types }) => {
     return sendSuccess(res, {
       ...pokemon.base,
       BST: computeBST(pokemon.base),
+    });
+  });
+
+  router.get('/:id/moves', (req, res) => {
+    const pokemon = pokemonById.get(String(req.params.id));
+    if (!pokemon) {
+      return sendError(res, 404, 'Pokemon not found.');
+    }
+
+    const { error, page, limit, offset } = parsePagination(req.query);
+    if (error) {
+      return sendError(res, 400, error);
+    }
+
+    const typeFilter = normalize(req.query.type);
+    const categoryFilter = normalize(req.query.category);
+    const pokemonTypes = (pokemon.type || []).map((type) => normalize(type));
+    let matches = pokemonTypes.flatMap((type) => movesByType.get(type) || []);
+
+    if (typeFilter) {
+      matches = matches.filter((move) => normalize(move.type) === typeFilter);
+    }
+    if (categoryFilter) {
+      matches = matches.filter((move) => normalize(move.category) === categoryFilter);
+    }
+
+    const total = matches.length;
+    const data = matches.slice(offset, offset + limit);
+    return sendSuccess(res, {
+      data,
+      total,
+      page,
+      limit,
     });
   });
 
