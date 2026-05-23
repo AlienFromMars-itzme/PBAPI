@@ -39,6 +39,7 @@ Errors use:
 | GET | `/api/pokemon/type/:type` | All Pokemon of a type | `type2` |
 | GET | `/api/pokemon/:id/weaknesses` | Weaknesses/resistances/immunities | - |
 | GET | `/api/pokemon/:id/stats` | Base stats + BST | - |
+| GET | `/api/pokemon/:id/moves` | Learnset moves (with sources); filters by type/category | `page`, `limit`, `type`, `category` |
 | GET | `/api/pokemon/search` | Fuzzy search across names | `q` |
 
 ### Moves

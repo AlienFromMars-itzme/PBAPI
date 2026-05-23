@@ -15,13 +15,70 @@ const includesType = (pokemon, typeName) => pokemon.type
   .map((type) => normalize(type))
   .includes(typeName);
 
-module.exports = ({ pokedex, types }) => {
+const learnsetOverrides = new Map([
+  ['nidoran♀', 'nidoranf'],
+  ['nidoran♂', 'nidoranm'],
+]);
+
+const toLearnsetKey = (value) => {
+  if (!value) return '';
+  const normalized = value
+    .toString()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  return normalized.replace(/[^a-z0-9]+/g, '');
+};
+
+const getLearnsetKey = (pokemon) => {
+  const englishName = pokemon.name?.english || '';
+  const override = learnsetOverrides.get(englishName.toLowerCase());
+  return override || toLearnsetKey(englishName);
+};
+
+module.exports = ({
+  pokedex, types, moves, learnsets,
+}) => {
   const router = express.Router();
   const typeMap = buildTypeMap(types);
   const pokemonById = new Map(pokedex.map((pokemon) => [String(pokemon.id), pokemon]));
   const pokemonByEnglishName = new Map(
     pokedex.map((pokemon) => [normalize(pokemon.name?.english), pokemon]),
   );
+  const movesByType = new Map();
+  const movesByKey = new Map();
+  const learnsetsById = learnsets ? new Map(Object.entries(learnsets)) : null;
+
+  moves.forEach((move) => {
+    const typeKey = normalize(move.type);
+    if (!typeKey) return;
+    const existing = movesByType.get(typeKey);
+    if (existing) {
+      existing.push(move);
+      return;
+    }
+    movesByType.set(typeKey, [move]);
+  });
+
+  moves.forEach((move) => {
+    const moveKey = toLearnsetKey(move.name?.english);
+    if (!moveKey) return;
+    if (!movesByKey.has(moveKey)) {
+      movesByKey.set(moveKey, move);
+    }
+  });
+
+  const buildMovePayload = ({ move, moveKey, sources }) => ({
+    id: move?.id || null,
+    key: moveKey || (move ? toLearnsetKey(move.name?.english) : null),
+    name: move?.name?.english || moveKey || null,
+    type: move?.type || null,
+    category: move?.category || null,
+    pp: move?.pp || null,
+    power: move?.power || null,
+    accuracy: move?.accuracy || null,
+    sources: sources || null,
+  });
 
   const buildEvolutionNode = (pokemon, trigger = null) => {
     const nextStages = pokemon.evolution?.next || [];
@@ -140,6 +197,56 @@ module.exports = ({ pokedex, types }) => {
     return sendSuccess(res, {
       ...pokemon.base,
       BST: computeBST(pokemon.base),
+    });
+  });
+
+  router.get('/:id/moves', (req, res) => {
+    const pokemon = pokemonById.get(String(req.params.id));
+    if (!pokemon) {
+      return sendError(res, 404, 'Pokemon not found.');
+    }
+
+    const { error, page, limit, offset } = parsePagination(req.query);
+    if (error) {
+      return sendError(res, 400, error);
+    }
+
+    const typeFilter = normalize(req.query.type);
+    const categoryFilter = normalize(req.query.category);
+    let matches = null;
+
+    if (learnsetsById) {
+      const learnset = learnsetsById.get(getLearnsetKey(pokemon));
+      if (learnset?.learnset) {
+        matches = Object.entries(learnset.learnset).map(([moveKey, sources]) => {
+          const move = movesByKey.get(moveKey);
+          return buildMovePayload({ move, moveKey, sources });
+        });
+      } else if (learnset) {
+        matches = [];
+      }
+    }
+
+    if (matches === null) {
+      const pokemonTypes = (pokemon.type || []).map((type) => normalize(type));
+      matches = pokemonTypes.flatMap((type) => movesByType.get(type) || [])
+        .map((move) => buildMovePayload({ move }));
+    }
+
+    if (typeFilter) {
+      matches = matches.filter((move) => normalize(move.type) === typeFilter);
+    }
+    if (categoryFilter) {
+      matches = matches.filter((move) => normalize(move.category) === categoryFilter);
+    }
+
+    const total = matches.length;
+    const data = matches.slice(offset, offset + limit);
+    return sendSuccess(res, {
+      data,
+      total,
+      page,
+      limit,
     });
   });
 

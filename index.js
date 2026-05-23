@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const vm = require('vm');
 const express = require('express');
 const cors = require('cors');
 
@@ -23,11 +24,32 @@ const loadJson = (fileName) => {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 };
 
+const loadLearnsets = (fileName) => {
+  const candidates = [
+    path.join(__dirname, 'data', fileName),
+    path.join(__dirname, fileName),
+  ];
+
+  const filePath = candidates.find((candidate) => fs.existsSync(candidate));
+  if (!filePath) {
+    return null;
+  }
+
+  const source = fs.readFileSync(filePath, 'utf8');
+  const match = source.match(/export const Learnsets[^=]*=\s*({[\s\S]*});\s*$/);
+  if (!match) {
+    throw new Error(`Invalid learnsets format in ${fileName}`);
+  }
+
+  return vm.runInNewContext(`(${match[1]})`);
+};
+
 const data = {
   pokedex: loadJson('pokedex.json'),
   moves: loadJson('moves.json'),
   items: loadJson('items.json'),
   types: loadJson('types.json'),
+  learnsets: loadLearnsets('learnsets.ts'),
 };
 
 const app = express();
